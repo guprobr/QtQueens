@@ -1,11 +1,10 @@
 #ifndef CHESSBOARD_H
 #define CHESSBOARD_H
 
-#include "queen.h"
-#include "utils.h"
 #include <QGraphicsView>
 #include <QGraphicsScene>
-#include <QVector>
+#include "utils.h"
+#include "queen.h"
 
 class ChessBoard : public QGraphicsView {
     Q_OBJECT
@@ -13,16 +12,23 @@ class ChessBoard : public QGraphicsView {
 public:
     explicit ChessBoard(QWidget *parent = nullptr);
 
-    bool checkConflicts(); // Method to check for conflicts
-
-    // Method to draw chessboard
+    void setBoardSize(int size); // New method to set board size
     void drawBoard();
-    // Method to add Queen
     void addQueen(int row, int col);
+    bool checkConflicts();
+    void resetGame();
+
+    void clearQueens();
+
+signals:
+    void queenMoved();  // Emitted whenever a queen is moved
 
 private:
     QGraphicsScene *scene;
-    QVector<Queen *> queens; // The list of gorgeous QUEENs
+    int boardSize; // Dynamic board size
+    QList<Queen *> queens;
+
+    void onQueenDropped(int row, int col);
 };
 
 #endif // CHESSBOARD_H

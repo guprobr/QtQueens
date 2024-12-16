@@ -6,7 +6,7 @@
 
 Queen::Queen(QGraphicsItem *parent)
     : QGraphicsPixmapItem(parent), m_row(0), m_col(0), beingDragged(false) {
-    setPixmap(QPixmap(":/resources/queen.png").scaled(32, 32));
+    setPixmap(QPixmap(":/resources/queen.png").scaled(SQUARE_SIZE, SQUARE_SIZE));
     setFlag(QGraphicsItem::ItemIsMovable);
     setFlag(QGraphicsItem::ItemSendsScenePositionChanges);
 }
@@ -14,7 +14,7 @@ Queen::Queen(QGraphicsItem *parent)
 void Queen::setPosition(int row, int col) {
     m_row = row;
     m_col = col;
-    setPos(col * 50 + 10, row * 50 + 10); // Adjust for the square size
+    setPos(col * SQUARE_SIZE, row * SQUARE_SIZE); // Adjust for the square size
 }
 
 int Queen::row() const {
@@ -39,8 +39,8 @@ void Queen::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
     // Snap the queen to the nearest square
     int x = static_cast<int>(pos().x());
     int y = static_cast<int>(pos().y());
-    int newRow = y / 50; // Calculate the row based on grid size
-    int newCol = x / 50; // Calculate the column based on grid size
+    int newRow = y / SQUARE_SIZE; // Calculate the row based on grid size
+    int newCol = x / SQUARE_SIZE; // Calculate the column based on grid size
 
     setPosition(newRow, newCol);
 
