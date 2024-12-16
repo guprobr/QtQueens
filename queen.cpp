@@ -39,10 +39,19 @@ void Queen::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
     // Snap the queen to the nearest square
     int x = static_cast<int>(pos().x());
     int y = static_cast<int>(pos().y());
-    int newRow = y / SQUARE_SIZE; // Calculate the row based on grid size
-    int newCol = x / SQUARE_SIZE; // Calculate the column based on grid size
 
-    setPosition(newRow, newCol);
+    // Calculate the board size dynamically based on SQUARE_SIZE
+    int boardSize = 800 / SQUARE_SIZE;
+
+    // Round to the nearest square, based on the grid size
+    int newRow = std::round(y / static_cast<float>(SQUARE_SIZE));
+    int newCol = std::round(x / static_cast<float>(SQUARE_SIZE));
+
+    // Ensure the newRow and newCol are within the bounds of the board (based on boardSize)
+    newRow = std::clamp(newRow, 0, boardSize - 1);  // Dynamic board size
+    newCol = std::clamp(newCol, 0, boardSize - 1);  // Dynamic board size
+
+    setPosition(newRow, newCol);  // Update the position of the queen
 
     // Notify ChessBoard to recheck conflicts
     auto board = dynamic_cast<ChessBoard *>(scene()->parent());
@@ -52,5 +61,6 @@ void Queen::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
 
     QGraphicsPixmapItem::mouseReleaseEvent(event);
 }
+
 
 
