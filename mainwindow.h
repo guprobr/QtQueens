@@ -24,6 +24,8 @@ private:
     ChessBoard *chessBoard;  // The chessboard widget
 
     void addQueens(int boardSize);
+
+    void showAboutQtQueensDialog();
 };
 
 #endif // MAINWINDOW_H
