@@ -271,6 +271,20 @@ void ChessBoard::highlightSquare(int row, int col, QColor color) {
 
 
 void ChessBoard::solvePuzzle() {
+
+    // Disable the menu actions and UI
+    QMenuBar *menuBar = parentWidget()->findChild<QMenuBar *>();
+    if (menuBar) {
+        for (QAction *action : menuBar->actions()) {
+            action->setEnabled(false);
+        }
+    }
+
+    setInteractive(false);
+    for (QWidget *child : findChildren<QWidget *>()) {
+        child->setEnabled(false);
+    }
+
     // Clear previous queens if any; by now we show a solution from scratch, not from the current game played :(
     clearQueens();
 
@@ -284,10 +298,23 @@ void ChessBoard::solvePuzzle() {
 
         addQueen(row, col);  // Add queen at the solution's position
 
-        // Create a blocking delay of 250 ms for animation purporses
+        // Create a blocking delay of 150 ms for animation purporses
         QEventLoop loop;
-        QTimer::singleShot(250, &loop, &QEventLoop::quit);  // Quit the loop after 250 ms
+        QTimer::singleShot(150, &loop, &QEventLoop::quit);  // Quit the loop after 250 ms
         loop.exec();  // Start the event loop and block!! here :O
+    }
+
+    // Re-enable UI interactions
+    setInteractive(true);
+    for (QWidget *child : findChildren<QWidget *>()) {
+        child->setEnabled(true);
+    }
+
+    // Re-enable the menu actions
+    if (menuBar) {
+        for (QAction *action : menuBar->actions()) {
+            action->setEnabled(true);
+        }
     }
 }
 

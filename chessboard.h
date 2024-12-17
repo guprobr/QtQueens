@@ -3,6 +3,7 @@
 
 #include <QGraphicsView>
 #include <QGraphicsScene>
+#include <QMenuBar>
 #include <QLabel>
 #include "utils.h"
 #include "queen.h"
