@@ -30,6 +30,8 @@ private:
     int boardSize; // Dynamic board size
     QList<Queen *> queens;
     void onQueenDropped(int row, int col);
+    bool isQueenAt(int row, int col);
+    void removeQueen(int row, int col);
 
     void showHint();  // Show a hint to the player
     void highlightSquare(int row, int col, QColor color);  // Helper function to highlight a square

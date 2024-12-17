@@ -120,6 +120,17 @@ void ChessBoard::addQueen(int row, int col) {
     emit queenMoved();  // Notify listeners
 }
 
+void ChessBoard::removeQueen(int row, int col) {
+    for (int i = 0; i < queens.size(); ++i) {
+        if (queens[i]->row() == row && queens[i]->col() == col) {
+            scene->removeItem(queens[i]);
+            delete queens[i];
+            queens.removeAt(i);
+            return;
+        }
+    }
+}
+
 void ChessBoard::onQueenDropped(int row, int col) {
     // Handle drag-and-drop for queens
     for (Queen *queen : queens) {
@@ -206,7 +217,7 @@ void ChessBoard::showHint() {
     if (conflictFound && noSafeMoveFound) {
         QMessageBox::information(this, "No Safe Move", "There are conflicts, but no safe squares available for the queens. You might need to move some queens manually to resolve this.");
     }
-    // No conflicts found
+    // No conflicts found :D
     else if (!conflictFound) {
         QMessageBox::information(this, "No conflicts", "No queens are blocking or threatening other positions.");
     }
@@ -269,9 +280,16 @@ void ChessBoard::highlightSquare(int row, int col, QColor color) {
 
 }
 
+bool ChessBoard::isQueenAt(int row, int col) {
+    for (const auto& queen : queens) {
+        if (queen->row() == row && queen->col() == col) {
+            return true;
+        }
+    }
+    return false;
+}
 
 void ChessBoard::solvePuzzle() {
-
     // Disable the menu actions and UI
     QMenuBar *menuBar = parentWidget()->findChild<QMenuBar *>();
     if (menuBar) {
@@ -285,39 +303,62 @@ void ChessBoard::solvePuzzle() {
         child->setEnabled(false);
     }
 
-    // Clear previous queens if any; by now we show a solution from scratch, not from the current game played :(
-    clearQueens();
-
     // Find a solution
-    std::vector<std::pair<int, int>> solution = findSolution();  // this function returns the solution
+    std::vector<std::pair<int, int>> solution = findSolution();
 
-    // Place all queens with a delay
-    for (const auto& pos : solution) {
-        int row = pos.first;
-        int col = pos.second;
+    // Create a vector to store coordinates of already existing queens on the board
+    std::vector<std::pair<int, int>> existingQueens;
 
-        addQueen(row, col);  // Add queen at the solution's position
-
-        // Create a blocking delay of 150 ms for animation purporses
-        QEventLoop loop;
-        QTimer::singleShot(150, &loop, &QEventLoop::quit);  // Quit the loop after 250 ms
-        loop.exec();  // Start the event loop and block!! here :O
+    // Iterate through the board to find existing queens and store their positions
+    for (int row = 0; row < boardSize; ++row) {
+        for (int col = 0; col < boardSize; ++col) {
+            if (isQueenAt(row, col)) {  // Check if there is a queen at this position
+                existingQueens.push_back({row, col});
+            }
+        }
     }
 
-    // Re-enable UI interactions
+    // Loop through the solution and "move "queens to their new positions
+    for (size_t i = 0; i < solution.size(); ++i) {
+        int row = solution[i].first;
+        int col = solution[i].second;
+
+        // If there are queens already on the board, remove the last one
+        if (!existingQueens.empty()) {
+            // Get the last queen's position
+            std::pair<int, int> lastQueen = existingQueens.back();
+            int prevRow = lastQueen.first;
+            int prevCol = lastQueen.second;
+
+            // Remove the last OLD queen from the board
+            removeQueen(prevRow, prevCol);
+
+            // Remove the last OLD queen from the list
+            existingQueens.pop_back();
+        }
+
+        // Place the NEW queen in the current solution's position
+        addQueen(row, col);
+
+        // Create a blocking delay of 300 ms for animation purposes
+        QEventLoop loop;
+        QTimer::singleShot(300, &loop, &QEventLoop::quit); 
+        loop.exec();
+    }
+
+    // Re-enable UI interactions after solving the puzzle
     setInteractive(true);
     for (QWidget *child : findChildren<QWidget *>()) {
         child->setEnabled(true);
     }
 
-    // Re-enable the menu actions
+    // Re-enable the menu actions after solving the puzzle
     if (menuBar) {
         for (QAction *action : menuBar->actions()) {
             action->setEnabled(true);
         }
     }
 }
-
 
 std::vector<std::pair<int, int>> ChessBoard::findSolution() {
     std::vector<std::pair<int, int>> solution;
@@ -342,7 +383,7 @@ bool ChessBoard::solveBacktrack(std::vector<int>& board, int row, std::vector<st
     for (int col = 0; col < boardSize; ++col) {
         if (isSafe(board, row, col)) {
             board[row] = col;  // Place queen at (row, col)
-            if (solveBacktrack(board, row + 1, solution)) {
+            if (solveBacktrack(board, row + 1, solution)) {  // Descent
                 return true;
             }
             board[row] = -1;  // Backtrackz
