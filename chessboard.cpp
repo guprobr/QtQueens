@@ -48,12 +48,6 @@ void ChessBoard::setBoardSize(int newSize) {
     // START New game, so Reset the chronometer
     resetChronometer();
     chronometerTimer->start(1000);
-
-    // re-enable the UI (if necessary)
-    setInteractive(true);
-    for (QWidget *child : findChildren<QWidget *>()) {
-        child->setEnabled(true);
-    }
 }
 
 void ChessBoard::resetChronometer() {
@@ -153,12 +147,6 @@ bool ChessBoard::checkConflicts() {
                                      QString("Congratulations! You've solved the puzzle in %1:%2!")
                                      .arg(elapsedSeconds / 60, 2, 10, QChar('0'))
                                      .arg(elapsedSeconds % 60, 2, 10, QChar('0')));
-
-            // Disable the UI
-            setInteractive(false);
-            for (QWidget *child : findChildren<QWidget *>()) {
-                child->setEnabled(false);
-            }
             return true;
         }
     }
@@ -183,7 +171,7 @@ void ChessBoard::showHint() {
     }
 
     if (hints.isEmpty()) {
-        if ( suggestLeastConflictMove(hints) ||  suggestConflictBreaker(hints) || suggestFutureSafeMove(hints) || suggestRandomMove(hints)) {
+        if (  suggestLeastConflictMove(hints) || suggestFutureSafeMove(hints) || suggestConflictBreaker(hints) || suggestRandomMove(hints)) {
             // A hint was found by one of the fallback methods
         }
     }
@@ -217,7 +205,6 @@ void ChessBoard::showHint() {
                                       Q_ARG(int, hint.toRow), Q_ARG(int, hint.toCol));
         } else {
             drawBoard(); // Clear highlights if cancelled
-            checkConflicts(); // tint again
         }
         return; // Show only one hint
     }
@@ -290,39 +277,35 @@ void ChessBoard::highlightSquare(int row, int col, QColor color) {
 }
 
 bool ChessBoard::suggestLeastConflictMove(QList<ChessBoard::Hint>& hints) {
-    int minConflicts = boardSize * boardSize;
+    int minConflicts = boardSize * boardSize;  // Initialize with a large value
     QPair<int, int> bestMove = {-1, -1};
     Queen* queenToMove = nullptr;
 
+   // Shuffle the queens list before iterating
     QList<Queen*> shuffledQueens = queens;
-    std::random_device rd;
-    std::mt19937 g(rd());
+    std::random_device rd;   // Seed for randomness
+    std::mt19937 g(rd());    // Mersenne Twister PRNG
     std::shuffle(shuffledQueens.begin(), shuffledQueens.end(), g);
 
-    for (int i = 0; i < shuffledQueens.size(); ++i) {
-        Queen* originalQueen = shuffledQueens[i];
-        int originalRow = originalQueen->row();
-        int originalCol = originalQueen->col();
+    for (Queen* queen : shuffledQueens) {
+        int originalRow = queen->row();
+        int originalCol = queen->col();
 
         for (int targetRow = 0; targetRow < boardSize; ++targetRow) {
             for (int targetCol = 0; targetCol < boardSize; ++targetCol) {
                 if (originalRow == targetRow && originalCol == targetCol) continue;
 
-                if (isQueenAt(targetRow, targetCol)) continue;
+                if ( !isQueenAt(targetRow, targetCol) ) {
+                    queen->setPosition(targetRow, targetCol);
+                } else continue;
 
-                // Use temporary positions
-                QVector<QPair<int, int>> tempPositions;
-                for (Queen* q : queens) {
-                    tempPositions.append({q->row(), q->col()});
-                }
-                tempPositions[i] = {targetRow, targetCol};
-
-                int conflicts = calculateConflicts(tempPositions); // Use modified calculateConflicts
+                int conflicts = calculateConflicts();
                 if (conflicts < minConflicts) {
                     minConflicts = conflicts;
                     bestMove = {targetRow, targetCol};
-                    queenToMove = originalQueen;
+                    queenToMove = queen;
                 }
+                queen->setPosition(originalRow, originalCol);
             }
         }
     }
@@ -334,13 +317,14 @@ bool ChessBoard::suggestLeastConflictMove(QList<ChessBoard::Hint>& hints) {
     return false;
 }
 
-int ChessBoard::calculateConflicts(const QVector<QPair<int, int>>& tempPositions) {
+int ChessBoard::calculateConflicts() {
     int conflictCount = 0;
-    for (int i = 0; i < tempPositions.size(); ++i) {
-        for (int j = i + 1; j < tempPositions.size(); ++j) {
-            if (tempPositions[i].first == tempPositions[j].first ||
-                tempPositions[i].second == tempPositions[j].second ||
-                std::abs(tempPositions[i].first - tempPositions[j].first) == std::abs(tempPositions[i].second - tempPositions[j].second)) {
+    for (int i = 0; i < queens.size(); ++i) {
+        for (int j = i + 1; j < queens.size(); ++j) {
+            Queen* q1 = queens[i];
+            Queen* q2 = queens[j];
+            if (q1->row() == q2->row() || q1->col() == q2->col() ||
+                std::abs(q1->row() - q2->row()) == std::abs(q1->col() - q2->col())) {
                 ++conflictCount;
             }
         }
@@ -372,32 +356,23 @@ bool ChessBoard::suggestConflictBreaker(QList<ChessBoard::Hint>& hints) {
 
     int originalRow = mostConflictingQueen->row();
     int originalCol = mostConflictingQueen->col();
-    int mostConflictingQueenIndex = -1;
-
-    QVector<QPair<int, int>> tempPositions;
-    for (int i = 0; i < queens.size(); ++i) {
-        tempPositions.append({queens[i]->row(), queens[i]->col()});
-        if(queens[i] == mostConflictingQueen)
-            mostConflictingQueenIndex = i;
-    }
-
-    if(mostConflictingQueenIndex == -1)
-        return false;
 
     for (int targetRow = 0; targetRow < boardSize; ++targetRow) {
         for (int targetCol = 0; targetCol < boardSize; ++targetCol) {
             if (originalRow == targetRow && originalCol == targetCol) continue;
 
-            if (isQueenAt(targetRow, targetCol)) continue;
-
-            tempPositions[mostConflictingQueenIndex] = {targetRow, targetCol};
-
-            if (calculateConflicts(tempPositions) < calculateConflictsAt(originalRow, originalCol)) {
+            if ( !isQueenAt(targetRow, targetCol) ) {
+                mostConflictingQueen->setPosition(targetRow, targetCol);
+            } else continue;
+            
+            if (calculateConflicts() < calculateConflictsAt(originalRow, originalCol)) {
                 hints.append({originalRow, originalCol, targetRow, targetCol, Qt::magenta, "Move to reduce major conflicts."});
+                mostConflictingQueen->setPosition(originalRow, originalCol);
                 return true;
             }
         }
     }
+    mostConflictingQueen->setPosition(originalRow, originalCol);
     return false;
 }
 
@@ -454,82 +429,46 @@ bool ChessBoard::suggestRandomMove(QList<ChessBoard::Hint>& hints) {
     return false;
 }
 
-bool ChessBoard::suggestFutureSafeMove(QList<Hint>& hints) {
-    QSet<QPair<QPair<int, int>, QPair<int, int>>> triedMoves;
 
-    // Shuffle the queens list
+
+bool ChessBoard::suggestFutureSafeMove(QList<ChessBoard::Hint>& hints) {
+    // Shuffle the queens list before iterating
     QList<Queen*> shuffledQueens = queens;
-    std::random_device rd;
-    std::mt19937 g(rd());
+    std::random_device rd;   // Seed for randomness
+    std::mt19937 g(rd());    // Mersenne Twister PRNG
     std::shuffle(shuffledQueens.begin(), shuffledQueens.end(), g);
 
-    for (int i = 0; i < shuffledQueens.size(); ++i) {
-        Queen* originalQueenToMove = shuffledQueens[i];
-        if (!isBlocking(originalQueenToMove)) continue;
+    for (Queen* queenToMove : shuffledQueens) {
+        if (!isBlocking(queenToMove)) continue;
 
-        int originalRow = originalQueenToMove->row();
-        int originalCol = originalQueenToMove->col();
+        int originalRow = queenToMove->row();
+        int originalCol = queenToMove->col();
 
         for (int targetRow = 0; targetRow < boardSize; ++targetRow) {
             for (int targetCol = 0; targetCol < boardSize; ++targetCol) {
                 if (originalRow == targetRow && originalCol == targetCol) continue;
 
-                QPair<QPair<int, int>, QPair<int, int>> currentMove = {{originalRow, originalCol}, {targetRow, targetCol}};
-                if (triedMoves.contains(currentMove)) continue;
+                if ( !isQueenAt(targetRow, targetCol) ) {
+                    queenToMove->setPosition(targetRow, targetCol);
+                    emit queenMoved();
+                    checkConflicts();
+                } else continue;
 
-                // 1. Create TEMPORARY QUEENS with temporary positions
-                QList<Queen*> tempQueens;
-                for (Queen* q : queens) {
-                    Queen* tempQ = new Queen(nullptr);
-                    tempQ->setPosition(q->row(), q->col());
-                    tempQueens.append(tempQ);
-                }
+                for (Queen* otherQueen : queens) {
+                    if (otherQueen == queenToMove) continue;
 
-                // Find the index of the queenToMove in the tempQueens list
-                int tempIndex = -1;
-                for(int k = 0; k < tempQueens.size(); k++){
-                    if(tempQueens[k]->row() == originalRow && tempQueens[k]->col() == originalCol){
-                        tempIndex = k;
-                        break;
+                    QPair<int, int> safeMoveForOther = findSafeMoveForQueen(otherQueen);
+                    if (safeMoveForOther.first != -1) { // A safe move exists for the other queen
+                        hints.append({originalRow, originalCol, targetRow, targetCol, Qt::cyan, QString("Moving this queen might allow the queen at (%1,%2) to move to a safe square.").arg(otherQueen->row()).arg(otherQueen->col())});
+                        queenToMove->setPosition(originalRow, originalCol);
+                        emit queenMoved();
+                        return true; // Found one future move
                     }
                 }
 
-                if(tempIndex == -1){
-                    qDeleteAll(tempQueens);
-                    continue;
-                }
+                queenToMove->setPosition(originalRow, originalCol);
+                emit queenMoved();
 
-                // 2. Temporarily move the TEMPORARY queen
-
-                if ( isQueenAt(targetRow, targetCol) ) continue;
-
-                tempQueens[tempIndex]->setPosition(targetRow, targetCol);
-
-                // 3. Check for conflict resolution using TEMPORARY QUEENS
-                bool conflictResolved = false;
-                if (!isBlocking(tempQueens[tempIndex])) {
-                    for (int j = 0; j < tempQueens.size(); ++j) {
-                        if (tempIndex == j) continue;
-                        if (isBlocking(tempQueens[j])) {
-                            QPair<int, int> safeMoveForOther = findSafeMoveForQueen(tempQueens[j]);
-                            if (safeMoveForOther.first != -1 &&
-                                (safeMoveForOther.first != tempQueens[j]->row() || safeMoveForOther.second != tempQueens[j]->col())) {
-                                conflictResolved = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (conflictResolved) {
-                    hints.append({originalRow, originalCol, targetRow, targetCol, Qt::cyan,
-                                 QString("Moving the queen at (%1,%2) resolves a conflict.").arg(originalRow).arg(originalCol)});
-                    triedMoves.insert(currentMove);
-                    qDeleteAll(tempQueens);
-                    return true;
-                }
-
-                qDeleteAll(tempQueens);
             }
         }
     }

@@ -50,7 +50,7 @@ private:
 
 
     void showHint();  // Show a hint "sound system" ye ! !!
-    int calculateConflicts(const QVector<QPair<int, int>>& tempPositions);
+    int calculateConflicts();
     int calculateConflictsAt(int row, int col);
     bool suggestLeastConflictMove(QList<ChessBoard::Hint>& hints);
     bool suggestConflictBreaker(QList<ChessBoard::Hint>& hints);
