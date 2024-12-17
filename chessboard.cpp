@@ -104,8 +104,10 @@ void ChessBoard::onQueenDropped(int row, int col) {
     // Handle drag-and-drop for queens
     for (Queen *queen : queens) {
         if (queen->row() == row && queen->col() == col) {
-            queen->setPosition(row, col);
-            emit queenMoved();  // Notify listeners
+            if ( !isQueenAt(row, col) ) {
+                queen->setPosition(row, col);
+                emit queenMoved();  // Notify listeners
+            }
             return;
         }
     }
@@ -169,7 +171,7 @@ void ChessBoard::showHint() {
     }
 
     if (hints.isEmpty()) {
-        if ( suggestConflictBreaker(hints) || suggestFutureSafeMove(hints) || suggestLeastConflictMove(hints) || suggestRandomMove(hints)) {
+        if ( suggestLeastConflictMove(hints) ||  suggestConflictBreaker(hints) || suggestFutureSafeMove(hints) || suggestRandomMove(hints)) {
             // A hint was found by one of the fallback methods
         }
     }
@@ -293,7 +295,10 @@ bool ChessBoard::suggestLeastConflictMove(QList<ChessBoard::Hint>& hints) {
             for (int targetCol = 0; targetCol < boardSize; ++targetCol) {
                 if (originalRow == targetRow && originalCol == targetCol) continue;
 
-                queen->setPosition(targetRow, targetCol);
+                if ( !isQueenAt(targetRow, targetCol) ) {
+                    queen->setPosition(targetRow, targetCol);
+                } else continue;
+
                 int conflicts = calculateConflicts();
                 if (conflicts < minConflicts) {
                     minConflicts = conflicts;
@@ -356,7 +361,10 @@ bool ChessBoard::suggestConflictBreaker(QList<ChessBoard::Hint>& hints) {
         for (int targetCol = 0; targetCol < boardSize; ++targetCol) {
             if (originalRow == targetRow && originalCol == targetCol) continue;
 
-            mostConflictingQueen->setPosition(targetRow, targetCol);
+            if ( !isQueenAt(targetRow, targetCol) ) {
+                mostConflictingQueen->setPosition(targetRow, targetCol);
+            } else continue;
+            
             if (calculateConflicts() < calculateConflictsAt(originalRow, originalCol)) {
                 hints.append({originalRow, originalCol, targetRow, targetCol, Qt::magenta, "Move to reduce major conflicts."});
                 mostConflictingQueen->setPosition(originalRow, originalCol);
@@ -440,9 +448,11 @@ bool ChessBoard::suggestFutureSafeMove(QList<ChessBoard::Hint>& hints) {
             for (int targetCol = 0; targetCol < boardSize; ++targetCol) {
                 if (originalRow == targetRow && originalCol == targetCol) continue;
 
-                queenToMove->setPosition(targetRow, targetCol);
-                emit queenMoved();
-                checkConflicts();
+                if ( !isQueenAt(targetRow, targetCol) ) {
+                    queenToMove->setPosition(targetRow, targetCol);
+                    emit queenMoved();
+                    checkConflicts();
+                } else continue;
 
                 for (Queen* otherQueen : queens) {
                     if (otherQueen == queenToMove) continue;
