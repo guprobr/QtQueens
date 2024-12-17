@@ -70,7 +70,7 @@ A graphical and interactive implementation of the classic **N-Queens Puzzle** us
 1. Clone this repository and build with cmake:
 ```bash
    git clone https://github.com/guprobr/QtQueens
-   cd Qtqueens
+   cd QtQueens
    mkdir build
    cd build
    cmake ..
