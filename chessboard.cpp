@@ -48,6 +48,12 @@ void ChessBoard::setBoardSize(int newSize) {
     // START New game, so Reset the chronometer
     resetChronometer();
     chronometerTimer->start(1000);
+
+    // re-enable the UI (if necessary)
+    setInteractive(true);
+    for (QWidget *child : findChildren<QWidget *>()) {
+        child->setEnabled(true);
+    }
 }
 
 void ChessBoard::resetChronometer() {
@@ -147,6 +153,12 @@ bool ChessBoard::checkConflicts() {
                                      QString("Congratulations! You've solved the puzzle in %1:%2!")
                                      .arg(elapsedSeconds / 60, 2, 10, QChar('0'))
                                      .arg(elapsedSeconds % 60, 2, 10, QChar('0')));
+
+            // Disable the UI
+            setInteractive(false);
+            for (QWidget *child : findChildren<QWidget *>()) {
+                child->setEnabled(false);
+            }
             return true;
         }
     }
@@ -205,6 +217,7 @@ void ChessBoard::showHint() {
                                       Q_ARG(int, hint.toRow), Q_ARG(int, hint.toCol));
         } else {
             drawBoard(); // Clear highlights if cancelled
+            checkConflicts(); // tint again
         }
         return; // Show only one hint
     }
