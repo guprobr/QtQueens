@@ -3,15 +3,16 @@
 #include <QMessageBox>
 #include <QGraphicsRectItem>
 #include <QBrush>
-
+#include <QTimer>
+#include <QEventLoop>
 #include <cmath>
 
-int SQUARE_SIZE = 75;
+int SQUARE_SIZE = 100;
 
 ChessBoard::ChessBoard(QWidget *parent)
     : QGraphicsView(parent), scene(new QGraphicsScene(this)), boardSize(8) { // Default to 8x8
     setScene(scene);
-    setFixedSize(800, 800);
+    setFixedSize(900, 900);
     scene->setSceneRect(0, 0, 800, 800);
 
     drawBoard();
@@ -62,7 +63,6 @@ void ChessBoard::resetGame() {
     drawBoard();
 }
 
-
 void ChessBoard::addQueen(int row, int col) {
     Queen *queen = new Queen();
     queen->setPosition(row, col);
@@ -70,7 +70,7 @@ void ChessBoard::addQueen(int row, int col) {
     scene->addItem(queen);
     queens.append(queen);
 
-    emit queenMoved();  // Notify listeners about the move
+    emit queenMoved();  // Notify listeners
 }
 
 void ChessBoard::onQueenDropped(int row, int col) {
@@ -90,7 +90,7 @@ bool ChessBoard::checkConflicts() {
     // Reset tinting for all queens (remove any previous tints)
     for (Queen *queen : queens) {
         QPixmap queenPixmap(":/resources/queen.png");
-        queen->setPixmap(queenPixmap.scaled(SQUARE_SIZE, SQUARE_SIZE));  // scale to 64 pretzels
+        queen->setPixmap(queenPixmap.scaled(SQUARE_SIZE, SQUARE_SIZE));  // scale to SQUARE_SIZE pretzels
     }
 
     // Check for conflicts between queens
@@ -114,7 +114,7 @@ bool ChessBoard::checkConflicts() {
 
     // Check if the puzzle is solved (i.e., no conflicts and all queens placed)
     if (!conflictsFound) {
-        if (queens.size() == boardSize) {  // Assuming we're solving the 8-Queens problem
+        if (queens.size() == boardSize) {
             qDebug() << "Congratulations! You've solved the puzzle of the " << boardSize << " Queens!";
             // Optionally, show a message box or play a sound here??
 
@@ -128,3 +128,70 @@ bool ChessBoard::checkConflicts() {
 
     return false;  // Conflicts found or incomplete placement
 }
+
+void ChessBoard::solvePuzzle() {
+    // Clear previous queens if any; by now we show a solution from scratch, not from the current game played :(
+    clearQueens();
+
+    // Find a solution
+    std::vector<std::pair<int, int>> solution = findSolution();  // this function returns the solution
+
+    // Place all queens with a delay
+    for (const auto& pos : solution) {
+        int row = pos.first;
+        int col = pos.second;
+
+        addQueen(row, col);  // Add queen at the solution's position
+
+        // Create a blocking delay of 250 ms for animation purporses
+        QEventLoop loop;
+        QTimer::singleShot(250, &loop, &QEventLoop::quit);  // Quit the loop after 250 ms
+        loop.exec();  // Start the event loop and block!! here :O
+    }
+}
+
+
+std::vector<std::pair<int, int>> ChessBoard::findSolution() {
+    std::vector<std::pair<int, int>> solution;
+    std::vector<int> board(boardSize, -1);  // -1 means no queen is placed in that column
+    
+    if (solveBacktrack(board, 0, solution)) {
+        return solution;
+    }
+    
+    return solution;  // Empty (if no solution found)
+}
+
+bool ChessBoard::solveBacktrack(std::vector<int>& board, int row, std::vector<std::pair<int, int>>& solution) {
+    if (row == boardSize) {
+        // If we reach the last row, (solution found)
+        for (int i = 0; i < boardSize; ++i) {
+            solution.push_back({i, board[i]});
+        }
+        return true;
+    }
+    
+    for (int col = 0; col < boardSize; ++col) {
+        if (isSafe(board, row, col)) {
+            board[row] = col;  // Place queen at (row, col)
+            if (solveBacktrack(board, row + 1, solution)) {
+                return true;
+            }
+            board[row] = -1;  // Backtrackz
+        }
+    }
+    
+    return false;  // No safe position for the queen :(
+}
+
+bool ChessBoard::isSafe(const std::vector<int>& board, int row, int col) {
+    for (int i = 0; i < row; ++i) {
+        int c = board[i];
+        if (c == col || std::abs(c - col) == std::abs(i - row)) {
+            return false;  // Conflict with another queen :(
+        }
+    }
+    return true;
+}
+
+

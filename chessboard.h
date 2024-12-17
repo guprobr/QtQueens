@@ -16,8 +16,8 @@ public:
     void drawBoard();
     void addQueen(int row, int col);
     bool checkConflicts();
+    void solvePuzzle();
     void resetGame();
-
     void clearQueens();
 
 signals:
@@ -29,6 +29,12 @@ private:
     QList<Queen *> queens;
 
     void onQueenDropped(int row, int col);
+    
+    std::vector<std::pair<int, int>> findSolution();
+    bool solveBacktrack(std::vector<int>& board, int row, std::vector<std::pair<int, int>>& solution);
+    bool isSafe(const std::vector<int>& board, int row, int col);
+
+
 };
 
 #endif // CHESSBOARD_H

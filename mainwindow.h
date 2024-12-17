@@ -13,6 +13,9 @@ class MainWindow : public QMainWindow {
 public:
     explicit MainWindow(QWidget *parent = nullptr);
 
+public slots:
+    void onSolvePuzzle();
+
 private:
     QMenuBar *menuBar;       // Menu bar
     QMenu *menuOptions;      // Options menu
