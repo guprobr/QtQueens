@@ -34,9 +34,12 @@ private:
     void removeQueen(int row, int col);
 
     void showHint();  // Show a hint to the player
+    bool canCreateFutureSafeMove(Queen *movedQueen);
+    bool suggestFutureSafeMove();
     void highlightSquare(int row, int col, QColor color);  // Helper function to highlight a square
     QPair<int, int> findSafeMoveForQueen(Queen *queen);
     bool isBlocking(Queen *queen);
+    bool isSquareSafe(Queen *ignoreQueen, int row, int col);
     
     std::vector<std::pair<int, int>> findSolution();
     bool solveBacktrack(std::vector<int>& board, int row, std::vector<std::pair<int, int>>& solution);

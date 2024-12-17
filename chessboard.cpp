@@ -36,6 +36,8 @@ ChessBoard::ChessBoard(QWidget *parent)
 }
 
 void ChessBoard::setBoardSize(int newSize) {
+
+    // THIS RESETs THE GAME
     clearQueens();       // Clear any existing queens
     boardSize = newSize; // Update internal board size
     scene->clear();      // Clear the scene
@@ -66,7 +68,7 @@ void ChessBoard::clearQueens() {
         scene->removeItem(queen);
         delete queen;
     }
-    queens.clear();
+    queens.clear(); // kill the objects also
 }
 
 void ChessBoard::drawBoard() {
@@ -184,44 +186,107 @@ bool ChessBoard::checkConflicts() {
 }
 
 void ChessBoard::showHint() {
-    // Clear any previous green highlights
+    // Clear previous highlights
     drawBoard();
-    checkConflicts();  // Make sure all conflicts are visually indicated (e.g., red-tinted queens)
+    checkConflicts();
 
     bool conflictFound = false;
     bool noSafeMoveFound = false;
 
-    // Identify queens that are blocking or attacking others
     for (Queen *queen : queens) {
         // Check if this queen is causing a conflict
         if (isBlocking(queen)) {
             conflictFound = true;
-
-            // Suggest a move for this queen
+        
+            // Try to find an immediate safe move
             QPair<int, int> safeMove = findSafeMoveForQueen(queen);
             if (safeMove.first != -1 && safeMove.second != -1) {
-                // Highlight the conflicting queen's position
-                highlightSquare(queen->row(), queen->col(), Qt::red);
-                // Highlight the suggested safe move
-                highlightSquare(safeMove.first, safeMove.second, Qt::green);
-
-                return;  // Stop after finding the first conflict
-            } else {
-                // If no safe move is found, mark that as a scenario
-                noSafeMoveFound = true;
+                highlightSquare(queen->row(), queen->col(), Qt::red);    // Highlight conflicting queen
+                highlightSquare(safeMove.first, safeMove.second, Qt::green);  // Highlight suggested move
+                return;
             }
         }
     }
 
-    // Handle the case where there is a conflict but no safe move
-    if (conflictFound && noSafeMoveFound) {
-        QMessageBox::information(this, "No Safe Move", "There are conflicts, but no safe squares available for the queens. You might need to move some queens manually to resolve this.");
-    }
-    // No conflicts found :D
-    else if (!conflictFound) {
-        QMessageBox::information(this, "No conflicts", "No queens are blocking or threatening other positions.");
+    // If no safe immediate move was found, suggest a position for a "future safe move"
+    if (conflictFound && !suggestFutureSafeMove()) {
+        QMessageBox::information(this, "No Hint available", 
+            "No immediate safe moves found. Try manually moving queens to resolve conflicts.");
+    } else if (!conflictFound) {
+        QMessageBox::information(this, "No Conflicts", "All queens are SAFE!");
     }
 }
+
+bool ChessBoard::suggestFutureSafeMove() {
+    for (Queen *queen : queens) {
+
+        if ( !isBlocking(queen))
+            return false;
+
+        // Try moving the queen to every position on the board
+        for (int row = 0; row < boardSize; ++row) {
+            for (int col = 0; col < boardSize; ++col) {
+                // Skip current position
+                if (queen->row() == row && queen->col() == col)
+                    continue;
+
+                // Temporarily move the queen
+                int originalRow = queen->row();
+                int originalCol = queen->col();
+                queen->setPosition(row, col);
+                checkConflicts();
+
+                // Check if this move creates a safe move for other queens
+                if (canCreateFutureSafeMove(queen)) {
+                    highlightSquare(originalRow, originalCol, Qt::blue);  // Highlight original position
+                    highlightSquare(row, col, Qt::cyan);              // Highlight suggested position
+                    queen->setPosition(originalRow, originalCol);       // Restore position
+                    checkConflicts();
+                    return true;
+                }
+
+                // Restore queen's position
+                queen->setPosition(originalRow, originalCol);
+                checkConflicts();
+            }
+        }
+    }
+    return false;  // No future safe moves found
+}
+
+
+bool ChessBoard::canCreateFutureSafeMove(Queen *movedQueen) {
+    for (Queen *otherQueen : queens) {
+        if (movedQueen == otherQueen)
+            continue;
+
+        // Check if any position becomes safe for the other queen
+        for (int row = 0; row < boardSize; ++row) {
+            for (int col = 0; col < boardSize; ++col) {
+                if (isSquareSafe(otherQueen, row, col))
+                    return true;  // A future safe move is possible!!
+            }
+        }
+    }
+    return false;  // No future safe moves found
+}
+
+bool ChessBoard::isSquareSafe(Queen *ignoreQueen, int row, int col) {
+    for (Queen *queen : queens) {
+        // Skip the given queen
+        if (queen == ignoreQueen)
+            continue;
+
+        // Check if any queen threatens the (row, col) position
+        if (queen->row() == row ||                        // Same row
+            queen->col() == col ||                        // Same column
+            std::abs(queen->row() - row) == std::abs(queen->col() - col)) {  // Same diagonal
+            return false;  // Conflict detected
+        }
+    }
+    return true;  // The square is safe
+}
+
 
 
 bool ChessBoard::isBlocking(Queen *queen) {
@@ -230,11 +295,11 @@ bool ChessBoard::isBlocking(Queen *queen) {
             if (queen->row() == otherQueen->row() ||    // Same row
                 queen->col() == otherQueen->col() ||    // Same column
                 std::abs(queen->row() - otherQueen->row()) == std::abs(queen->col() - otherQueen->col())) {  // Same diagonal
-                return true;  // There is a conflict
+                return true;  // There is a conflict :P
             }
         }
     }
-    return false;  // No conflict
+    return false;  // No conflict! :D
 }
 
 QPair<int, int> ChessBoard::findSafeMoveForQueen(Queen *queen) {
@@ -270,7 +335,7 @@ void ChessBoard::highlightSquare(int row, int col, QColor color) {
         QPen(Qt::NoPen), QBrush(color));
     highlight->setZValue(1);  // Send highlight below queens and abpve chessboard
 
-    // Introduce a blocking delay of 1000 ms
+    // Introduce a blocking delay of 1000 ms for animation purposes
     QEventLoop loop;
     QTimer::singleShot(1000, &loop, &QEventLoop::quit);
     loop.exec();
@@ -318,7 +383,7 @@ void ChessBoard::solvePuzzle() {
         }
     }
 
-    // Loop through the solution and "move "queens to their new positions
+    // Loop through the solution and "move" queens to their new positions
     for (size_t i = 0; i < solution.size(); ++i) {
         int row = solution[i].first;
         int col = solution[i].second;
@@ -340,9 +405,9 @@ void ChessBoard::solvePuzzle() {
         // Place the NEW queen in the current solution's position
         addQueen(row, col);
 
-        // Create a blocking delay of 300 ms for animation purposes
+        // Create a blocking delay of 500 ms for animation purposes
         QEventLoop loop;
-        QTimer::singleShot(300, &loop, &QEventLoop::quit); 
+        QTimer::singleShot(500, &loop, &QEventLoop::quit); 
         loop.exec();
     }
 
