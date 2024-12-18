@@ -19,7 +19,7 @@ ChessBoard::ChessBoard(QWidget *parent)
 
     // Add a "Hint" button
     QPushButton *hintButton = new QPushButton("Hint", this);
-    hintButton->setGeometry(370, 700, 100, 40);
+    hintButton->setGeometry(320, 700, 100, 40);
     connect(hintButton, &QPushButton::clicked, this, &ChessBoard::showHint);
 
     // Init the chronometer
