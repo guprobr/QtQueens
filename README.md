@@ -76,5 +76,7 @@ A graphical and interactive implementation of the classic **N-Queens Puzzle** us
    cmake ..
    make
 ```
-![image](https://github.com/user-attachments/assets/2b702e8f-0a95-4359-aab7-5c6193c7339c)
+
+![image](https://github.com/user-attachments/assets/2ea01fb6-b75c-4f82-a25a-b57fcd227540)
+
 
